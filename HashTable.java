@@ -1,0 +1,328 @@
+/**************************************************************************** 
+ 
+                                                        Kyle Sit 
+                                                        3 October 2015 
+                                Java Hashtable 
+ 
+File Name:      HashTable.java
+Description:    This program provides methods for inserting items into
+		a Hashtable.
+****************************************************************************/
+
+public class HashTable extends Base {
+
+        /* counters, flags and constants */
+        private static int counter = 0;         // number of HashTables so far
+        private static boolean debug;           // allocation of debug states
+        protected static final short NULL = 0;  // in case you want to use NULL
+
+        /* data fields */
+        private long occupancy;         // number of items stored in table
+        private int size;               // size of hash table
+        private Base table[];   // the Hash Table itself ==> array of Base
+        private int tableCount; // which hash table it is 
+
+        /* initialized by Locate function */
+        private int index;      // last location checked in hash table
+
+        /* debug messages */
+        private static final String DEBUG_ALLOCATE = " - Allocated]\n";
+        private static final String DEBUG_INSERT = " - Insert]\n";
+        private static final String DEBUG_LOCATE = " - Locate]\n";
+        private static final String DEBUG_LOOKUP = " - Lookup]\n";
+        private static final String FULL = " is full...aborting...]\n";
+        private static final String HASH = "[Hash Table ";
+        private static final String HASH_VAL = "[Hash value is: ";
+        private static final String INSERT_BUMP = 
+                                        "[bumping to next location...]\n";
+        private static final String PROCESSING = "[Processing "; 
+        private static final String TRYING = "[Trying index "; ; 
+
+        /**
+         * Sets Debug messages off
+	 *
+	 * No parameters
+	 *
+	 * No return
+         */
+        public static void setDebugOff () {
+
+                debug = false;
+        }       
+
+        /**
+         * Sets Debug messages on
+	 *
+	 * No parameters
+	 *
+	 * No return
+         */
+        public static void setDebugOn () {
+
+                debug = true;
+        }       
+        
+        /**
+         * Constructor for the HashTable.
+         * Allocates and initializes the memory associated with a hash
+         * table.
+         *
+         * @param  sz   The desired size of the HashTable
+         */
+        public HashTable (int sz) {
+
+		//Initialize all member variables to appropriate values
+                this.occupancy = 0;
+		this.size = sz;
+		this.tableCount = ++counter;
+		this.table = new Base[this.size];
+
+		//Set each space in table to null
+		for( int spot = 0; spot < this.size; spot++ ) {
+			this.table[spot] = null;
+		}
+
+		//Debug Statement
+		if( debug ) {
+			System.err.println( HASH + counter + DEBUG_ALLOCATE );
+		}
+
+        }
+
+        /**
+         * Performs insertion into the tabble via delegation to the
+         * private insert method.
+         *
+         * @param   element        The element we want to insert into the 
+	 *			   Hashtable.
+         * @return  Returns true if the insert was a succcess, false if not.
+         */
+        public boolean insert (Base element) {
+                return insert (element, false);
+        }
+
+        /**
+         * Inserts the element in the hash table.
+         * If the element cannot be inserted, false will be returned.  
+         * If the element can be inserted, the element is inserted and true is
+         * returned. Duplicate insertions will cause the existing element
+         * to be deleted, and the duplicate element to take its place.
+         *
+         * @param   element        The element we want to insert into the 
+	 *			   Hashtable.
+         * @param   recursiveCall  False if called from main, true if called 
+	 *			   within the method.
+         * @return  Return true for a successful insert and false if not.
+         */
+        private boolean insert (Base element, boolean recursiveCall) {
+
+		if( debug ) {
+			System.err.println(HASH + counter + DEBUG_INSERT);
+		}
+		
+		//Make call to location
+		Base test = locate(element);
+
+		//If the table was exhausted we print debug and return false 
+		if( test == null ) {
+			if( debug ) {
+				System.err.println(HASH + FULL);
+				return false;
+			}
+			
+			return false;
+		}
+
+		//If the returned element was the same then we know we either 
+		//have a null spot to insert or a duplicate.
+		else if( test.equals(element) ) {
+			//Duplicate case
+			if( this.table[index] != null ) {
+				this.table[index] = element;
+				return true;
+			}
+			//Null spot to insert case
+			else {
+				this.table[index] = element;
+				this.occupancy++;
+				return true;
+			}
+		}
+
+		//Otherwise we have an alphabetic order case and need to move
+		//the current element in the spot to its next probe location
+		else {
+			//First insert the element into the table
+			this.table[index] = element;
+			//Make recursive call
+			insert( test, true );
+
+			//debug statement
+			if( debug ) {
+				System.err.println(INSERT_BUMP);
+			}
+
+			this.occupancy++;
+			return true;
+		}
+
+        }
+
+        /**
+         * Finds the desired location for insert and lookup.
+	 * Checks the initial location to see if there is an available spot.
+	 * If the initial location is not available then we loop over the 
+	 * probe sequence looking for an available spot.
+         *
+         * @param   element  The element we want to find a spot for in the 
+	 *		     Hashtable.
+         * @return  We return the element passed in if we can insert it into 
+	 *	    a null spot or it is a duplicate.  We return the Base 
+	 *	    currently occupying the spot if we need to move it before
+	 *	    we insert the passed in element.  Return null if the table
+	 *	    is full and nothing can be inserted.
+         */
+        private Base locate (Base element) {
+
+		//Initialize necessary variables for checks
+		int hashVal = element.hashCode();
+		int init_loc = hashVal % this.size;
+		int increment = (hashVal % (this.size-1)) + 1;
+		int current_loc = (init_loc + increment) % this.size;
+		int place = 0;
+		
+		//Debug statement block
+		if( debug ) {
+			System.err.println(HASH + counter + DEBUG_LOCATE);
+			System.err.println(PROCESSING + element.getName()+"]");
+			System.err.println(HASH_VAL + hashVal + "]");
+			System.err.println(TRYING + init_loc + "]");
+		}
+
+		//First check for initial location
+		//If the initial location in the table is null we return the
+		//element we are trying to insert and reset index
+		if( this.table[init_loc] == null 
+			|| this.table[init_loc].equals(element) ){
+			index = init_loc;
+
+			return element;
+		}
+		
+		//If the initial location contains an element that has a lower
+		//alphabetic order than the element we want to insert, we return
+		//our element and reset the index
+		else if( this.table[init_loc].isLessThan(element) ) {
+			index = init_loc;
+			return this.table[init_loc];
+		}
+	
+		//If we cannot insert at the initial location we check the
+		//probe sequence using a loop.
+		else {
+			while( current_loc != init_loc ) {
+		
+				if( debug ) {
+				       System.err.println(TRYING + 
+							current_loc + "]");
+				}
+				
+				//If the current location in the table is null 
+				//we return the element we are trying to insert 
+				//and reset index
+				if( this.table[current_loc] == null
+				   || this.table[current_loc].equals(element)){
+					index = current_loc;
+					return element;
+				}
+
+				//If the current location contains an element 
+				//that has a lower alphabetic order than the 
+				//element we want to insert, we return our
+				//element and reset the index
+				else if( this.table[current_loc]
+					.isLessThan(element)){
+					return this.table[current_loc];
+				}			
+				else {
+					current_loc = (current_loc + increment) 
+							% this.size;
+				}
+			}
+		}
+
+		//If no locations were open we exhausted the table
+		return null;
+        
+	}
+
+        /**
+         * Used to look up a desired element.
+	 * If location returns the same element that means the element
+	 * we are looking for was previously inserted and can be found.
+	 * If location returns anything else, by logical means our element
+	 * was never inserted.
+         *
+         * @param   element  The element we want to look for in the HashTable
+         * @return  Return a pointer to the element or null if not found
+         */
+        public Base lookup (Base element) {
+
+		//Debug Statement
+		if( debug ) {
+			System.err.println(HASH + counter + DEBUG_LOOKUP);
+		}
+		
+		//Initialize Base variable to hold locates return
+		Base find = locate(element);
+
+		//If we return the same element that means we found a null spot
+		//or the element we want
+		if( find.equals(element) ) {
+			//This null check means we found the element and return
+			//it because there exists something at index
+			if( this.table[index] != null ) {
+				find = this.table[index];
+				return find;
+			}
+			//If we get null that means the object was not inserted
+			//where it should have been so it is not in the table
+			else {
+				return null;
+			}
+		}
+
+		//If we get a different base returned that means the base we 
+		//are looing for did not bump out the one currently in the 
+		//table so the base is not in the table
+		else {
+			return null;
+		}
+
+        }
+
+        /**
+         * Creates a string representation of the hash table. The method 
+         * traverses the entire table, adding elements one by one
+         * according to their index in the table. 
+         *
+         * @return  String representation of hash table
+         */
+        public String toString () {
+
+                String string = "Hash Table " + tableCount + ":\n";
+                string += "size is " + size + " elements, "; 
+                string += "occupancy is " + occupancy + " elements.\n";
+
+                /* go through all table elements */
+                for (int index = 0; index < size; index++) {
+
+                        if (table[index] != null) {
+                                string += "at index " + index + ":  ";
+                                string += "" + table[index] + "\n"; 
+                        }
+                }
+
+                return string;
+        }
+}
